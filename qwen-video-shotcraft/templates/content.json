@@ -1,0 +1,37 @@
+{
+  "title": "Kubernetes Pod lifecycle",
+  "subtitle": "How control loops turn a declared workload into running, healthy containers",
+  "scenes": [
+    {
+      "title": "Declare desired state",
+      "subtitle": "The API server stores the spec; controllers watch it and reconcile",
+      "nodes": [["kubectl", "sends Deployment spec"], ["API server", "validates and stores"], ["etcd", "persists objects"], ["Deployment controller", "rolls out ReplicaSets"], ["ReplicaSet controller", "keeps Pod count"]],
+      "links": [["kubectl", "API server", "submits"], ["API server", "etcd", "writes"], ["API server", "Deployment controller", "watch event"], ["Deployment controller", "API server", "writes RS"], ["API server", "ReplicaSet controller", "watch event"], ["ReplicaSet controller", "API server", "creates Pods"]]
+    },
+    {
+      "title": "Schedule each Pod",
+      "subtitle": "Filters drop unfit nodes, scores rank the rest; unschedulable Pods wait and retry",
+      "nodes": [["Scheduling queue", "pending Pods"], ["Filter plugins", "CPU, taints, affinity"], ["Score plugins", "spread and balance"], ["Binding", "nodeName written"], ["Backoff queue", "unschedulable Pods"]],
+      "links": [["Scheduling queue", "Filter plugins", "next Pod"], ["Filter plugins", "Score plugins", "fit nodes"], ["Score plugins", "Binding", "best node"], ["Filter plugins", "Backoff queue", "no fit"], ["Backoff queue", "Scheduling queue", "retries"]]
+    },
+    {
+      "title": "Run and probe on the node",
+      "subtitle": "The kubelet drives runtime and network plugins, then probes decide restarts and traffic",
+      "nodes": [["kubelet", "syncs its Pods"], ["CRI runtime", "pulls image, runs"], ["CNI plugin", "assigns Pod IP"], ["Container", "app process"], ["Readiness probe", "can it serve?"], ["Endpoints", "Service traffic list"]],
+      "links": [["kubelet", "CRI runtime", "run sandbox"], ["kubelet", "CNI plugin", "set up net"], ["CRI runtime", "Container", "starts"], ["kubelet", "Readiness probe", "runs"], ["Readiness probe", "Container", "checks"], ["Readiness probe", "Endpoints", "gates"], ["Container", "kubelet", "status"]]
+    },
+    {
+      "title": "Terminate and replace",
+      "subtitle": "The kubelet stops a deleted Pod gracefully while the ReplicaSet controller makes a new one",
+      "nodes": [["Delete request", "user or eviction"], ["kubelet", "stops the Pod"], ["preStop hook", "drains connections"], ["SIGTERM", "graceful shutdown"], ["SIGKILL", "after grace period"], ["ReplicaSet controller", "sees one Pod short"], ["New Pod", "scheduled again"]],
+      "links": [["Delete request", "kubelet", "stops Pod"], ["kubelet", "preStop hook", "runs first"], ["kubelet", "SIGTERM", "sends"], ["kubelet", "SIGKILL", "forces"], ["Delete request", "ReplicaSet controller", "lowers count"], ["ReplicaSet controller", "New Pod", "creates"]]
+    },
+    {
+      "title": "How it fits together",
+      "subtitle": "Every component reconciles through the API server; none calls another directly",
+      "nodes": [["ReplicaSet controller", "wants N Pods"], ["API server", "single source of truth"], ["Scheduling queue", "unbound Pods"], ["Binding", "Pod gets a node"], ["kubelet", "runs bound Pods"]],
+      "links": [["ReplicaSet controller", "API server", "posts Pods"], ["API server", "Scheduling queue", "queues"], ["Scheduling queue", "Binding", "places"], ["Binding", "API server", "writes"], ["API server", "kubelet", "assigns"], ["kubelet", "API server", "reports"]]
+    }
+  ],
+  "closing_note": "A Pod is disposable: controllers and probes keep re-converging on the declared state."
+}
